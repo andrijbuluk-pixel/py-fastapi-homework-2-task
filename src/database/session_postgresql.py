@@ -54,6 +54,6 @@ async def get_postgresql_db_contextmanager() -> AsyncGenerator[AsyncSession, Non
 
 
 async def reset_postgresql_database():
-  async with postgresql_engine.begin() as conn:
-    await conn.run_sync(Base.metadata.drop_all)
-    await conn.run_sync(Base.metadata.create_all)
+    async with postgresql_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)

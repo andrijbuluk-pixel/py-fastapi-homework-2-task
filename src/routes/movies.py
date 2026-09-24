@@ -185,7 +185,7 @@ async def update_movie(
     if movie_search is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Movie with the given ID was not found."
+            detail="Movie with the given ID was not found."
         )
 
     update_data = movie.model_dump(exclude_unset=True)
