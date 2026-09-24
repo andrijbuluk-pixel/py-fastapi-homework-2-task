@@ -14,7 +14,7 @@ class BaseAppSettings(BaseSettings):
 class Settings(BaseAppSettings):
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "test_user")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "test_password")
-    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "test_host")
+    POSTGRES_HOST: str = os.getenv("POSTGRES_HOST", "postgres")
     POSTGRES_DB_PORT: int = int(os.getenv("POSTGRES_DB_PORT", 5432))
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "test_db")
 
