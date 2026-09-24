@@ -147,3 +147,63 @@ async def get_movie(
 
     return movie
 
+
+@router.delete("/movies/{movie_id}/", response_model=MovieDetailSchema)
+async def delete_movie(
+        movie_id: int,
+        db: AsyncSession = Depends(get_db),
+):
+    movie = await get_movie_relations(movie_id, db)
+
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
+
+    await db.delete(movie)
+    await db.commit()
+    return movie, {"detail": "Movie deleted successfully."}
+
+
+@router.patch("/movies/{movie_id}/", response_model=MovieUpdateSchema)
+async def update_movie(
+        movie_id: int,
+        movie: MovieUpdateSchema,
+        db: AsyncSession = Depends(get_db),
+):
+    movie_search = await db.scalar(
+        select(MovieModel).where(
+            MovieModel.id == movie_id,
+        )
+    )
+
+    if movie_search is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Movie with the given ID was not found."
+        )
+
+    exist_movie = await db.scalar(
+        select(MovieModel).where(
+            MovieModel.name == movie.name,
+            MovieModel.date == movie.date,
+            MovieModel.id != movie_id,
+        )
+    )
+
+    if exist_movie is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A movie with the name '{movie.name}' and release date '{movie.date}' already exists."
+        )
+
+    movie_search.name = movie.name
+    movie_search.date = movie.date
+    movie_search.score = movie.score
+    movie_search.overview = movie.overview
+    movie_search.status = movie.status
+    movie_search.budget = movie.budget
+    movie_search.revenue = movie.revenue
+
+    await db.commit()
+
+    await get_movie_relations(movie_id, db)
+    return {"detail": "Movie updated successfully."}
