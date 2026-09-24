@@ -1,9 +1,7 @@
 import math
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from numpy.ma.core import mvoid
 from sqlalchemy import select, func
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -41,7 +39,7 @@ async def get_or_create(db: AsyncSession, model, **kwargs):
 
 
 async def get_relations_data(movie_date, db: AsyncSession = Depends(get_db)):
-    country_db = await get_or_create(db, CountryModel, name=movie_date.country)
+    country_db = await get_or_create(db, CountryModel, code=movie_date.country)
 
     genres_db = [
         await get_or_create(db, GenreModel, name=name)
