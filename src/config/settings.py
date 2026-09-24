@@ -19,7 +19,7 @@ class Settings(BaseAppSettings):
     POSTGRES_DB: str = os.getenv("POSTGRES_DB", "test_db")
 
 
-class TestingSettings(BaseAppSettings):
+class TestingSettings(Settings):
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, 'PATH_TO_DB', ":memory:")
