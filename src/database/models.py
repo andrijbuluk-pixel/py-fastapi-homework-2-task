@@ -85,7 +85,7 @@ class CountryModel(Base):
     __tablename__ = "countries"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False)
+    code: Mapped[str] = mapped_column(String(3), unique=True, nullable=False, default="US")
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     movies: Mapped[list["MovieModel"]] = relationship("MovieModel", back_populates="country")

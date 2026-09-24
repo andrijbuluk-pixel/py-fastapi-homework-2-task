@@ -1,6 +1,6 @@
 import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from database.models import (
     MovieStatusEnum,
@@ -77,12 +77,13 @@ class MovieDetailSchema(BaseModel):
 
 
 class MovieCreateSchema(BaseModel):
-    name: str
+    name: str = Field(max_length=255)
     date: datetime.date
-    score: float
+    score: float = Field(ge=0, le=100)
     overview: str
     status: MovieStatusEnum
-    budget: float
+    budget: float = Field(ge=0)
+    revenue: float = Field(ge=0)
     revenue: float
     country: str
     genres: list[str]
@@ -91,6 +92,16 @@ class MovieCreateSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: datetime.date):
+        max_date = datetime.date.today().replace(
+            year=datetime.date.today().year + 1
+        )
+        if v > max_date:
+            raise ValueError("Invalid date")
+        return v
 
 
 class MovieUpdateSchema(BaseModel):

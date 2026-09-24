@@ -31,28 +31,32 @@ async def get_movie_relations(movie_id: int, db: AsyncSession = Depends(get_db))
     return await db.scalar(loader)
 
 
+async def get_or_create(db: AsyncSession, model, **kwargs):
+    instance = await db.scalar(select(model).filter_by(**kwargs))
+
+    if not instance:
+        instance = model(**kwargs)
+        db.add(instance)
+    return instance
+
+
 async def get_relations_data(movie_date, db: AsyncSession = Depends(get_db)):
-    country_db = await db.scalar(
-        select(CountryModel).where(CountryModel.code == movie_date.country)
-    )
+    country_db = await get_or_create(db, CountryModel, name=movie_date.country)
 
-    genres_db = (
-        await db.scalars(
-            select(GenreModel).where(GenreModel.name.in_(movie_date.genres))
-        )
-    ).all()
+    genres_db = [
+        await get_or_create(db, GenreModel, name=name)
+        for name in movie_date.genres
+    ]
 
-    actors_db = (
-        await db.scalars(
-            select(ActorModel).where(ActorModel.name.in_(movie_date.actors))
-        )
-    ).all()
+    actors_db = [
+        await get_or_create(db, ActorModel, name=name)
+        for name in movie_date.actors
+    ]
 
-    languages_db = (
-        await db.scalars(
-            select(LanguageModel).where(LanguageModel.name.in_(movie_date.languages))
-        )
-    ).all()
+    languages_db = [
+        await get_or_create(db, LanguageModel, name=name)
+        for name in movie_date.languages
+    ]
 
     return country_db, genres_db, actors_db, languages_db
 
@@ -79,11 +83,11 @@ async def get_movies_list(
     else:
         next_page = None
 
-    pgm = select(MovieModel).limit(per_page).offset((page - 1) * per_page)
+    pgm = select(MovieModel).limit(per_page).offset((page - 1) * per_page).order_by(MovieModel.id.desc())
     result = await db.execute(pgm)
     movies = result.scalars().all()
 
-    if total_items == 0 or page > total_pages:
+    if total_items == 0 or page > total_pages or not movies:
         raise HTTPException(status_code=404, detail="No movies found.")
 
     return {
@@ -148,7 +152,7 @@ async def get_movie(
     return movie
 
 
-@router.delete("/movies/{movie_id}/", response_model=MovieDetailSchema)
+@router.delete("/movies/{movie_id}/", status_code=204)
 async def delete_movie(
         movie_id: int,
         db: AsyncSession = Depends(get_db),
@@ -156,14 +160,17 @@ async def delete_movie(
     movie = await get_movie_relations(movie_id, db)
 
     if not movie:
-        raise HTTPException(status_code=404, detail="Movie with the given ID was not found.")
+        raise HTTPException(
+            status_code=404,
+            detail="Movie with the given ID was not found."
+        )
 
     await db.delete(movie)
     await db.commit()
-    return movie, {"detail": "Movie deleted successfully."}
+    return
 
 
-@router.patch("/movies/{movie_id}/", response_model=MovieUpdateSchema)
+@router.patch("/movies/{movie_id}/")
 async def update_movie(
         movie_id: int,
         movie: MovieUpdateSchema,
@@ -181,29 +188,37 @@ async def update_movie(
             detail=f"Movie with the given ID was not found."
         )
 
-    exist_movie = await db.scalar(
-        select(MovieModel).where(
-            MovieModel.name == movie.name,
-            MovieModel.date == movie.date,
-            MovieModel.id != movie_id,
-        )
-    )
+    update_data = movie.model_dump(exclude_unset=True)
 
-    if exist_movie is not None:
-        raise HTTPException(
-            status_code=409,
-            detail=f"A movie with the name '{movie.name}' and release date '{movie.date}' already exists."
+    if "country" in update_data:
+        country_name = update_data.pop("country")
+        movie_search.country = await get_or_create(
+            db, CountryModel, name=country_name, code=country_name[:3].upper()
         )
 
-    movie_search.name = movie.name
-    movie_search.date = movie.date
-    movie_search.score = movie.score
-    movie_search.overview = movie.overview
-    movie_search.status = movie.status
-    movie_search.budget = movie.budget
-    movie_search.revenue = movie.revenue
+    if "genres" in update_data:
+        genres_name = update_data.pop("genres")
+        movie_search.genres = [
+            await get_or_create(db, GenreModel, name=name)
+            for name in genres_name
+        ]
+
+    if "actors" in update_data:
+        actors_name = update_data.pop("actors")
+        movie_search.actors = [
+            await get_or_create(db, ActorModel, name=name)
+            for name in actors_name
+        ]
+
+    if "languages" in update_data:
+        languages_name = update_data.pop("languages")
+        movie_search.languages = [
+            await get_or_create(db, LanguageModel, name=name)
+            for name in languages_name
+        ]
+
+    for key, value in update_data.items():
+        setattr(movie_search, key, value)
 
     await db.commit()
-
-    await get_movie_relations(movie_id, db)
     return {"detail": "Movie updated successfully."}
