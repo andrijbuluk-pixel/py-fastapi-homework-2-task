@@ -1,5 +1,6 @@
 import os
 
+from database.session_postgresql import reset_postgresql_database
 from database.models import (
     Base,
     MovieModel
