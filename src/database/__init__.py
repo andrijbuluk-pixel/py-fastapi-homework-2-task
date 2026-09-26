@@ -1,10 +1,10 @@
 import os
 
-from database.session_postgresql import reset_database
 from database.models import (
     Base,
     MovieModel
 )
+from database.session_sqlite import reset_sqlite_database as reset_database
 
 environment = os.getenv("ENVIRONMENT", "developing")
 
